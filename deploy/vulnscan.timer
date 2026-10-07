@@ -1,0 +1,11 @@
+# /etc/systemd/system/vulnscan.timer
+# scope.yaml の time_window（例: 平日 22:00-06:00）の内側で起動する
+[Unit]
+Description=Run vulnscan weekly
+
+[Timer]
+OnCalendar=Wed *-*-* 22:30:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

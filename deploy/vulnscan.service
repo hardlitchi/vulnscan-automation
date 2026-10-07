@@ -1,0 +1,22 @@
+# /etc/systemd/system/vulnscan.service
+[Unit]
+Description=Scheduled vulnerability scan (scope-guarded)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=vulnscan
+WorkingDirectory=/opt/vulnscan
+# Slack 通知を使う場合は EnvironmentFile に VULNSCAN_SLACK_WEBHOOK を記載（権限 600）
+EnvironmentFile=-/etc/vulnscan/env
+ExecStart=/opt/vulnscan/.venv/bin/vulnscan scan \
+  --scope /etc/vulnscan/scope.yaml \
+  --suppressions /etc/vulnscan/suppressions.yaml \
+  --all --profile standard --docker \
+  --db /var/lib/vulnscan/vulnscan.db \
+  --out /var/lib/vulnscan/reports \
+  --audit-log /var/log/vulnscan/audit.log \
+  --notify-min high
+# スコープ外の対象があると終了コード 2 になる。失敗として扱いたくない場合は以下を有効化
+# SuccessExitStatus=2

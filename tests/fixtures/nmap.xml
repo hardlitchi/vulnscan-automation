@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nmaprun scanner="nmap">
+  <host>
+    <status state="up"/>
+    <address addr="10.0.10.5" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="22"><state state="closed"/></port>
+      <port protocol="tcp" portid="443"><state state="open"/><service name="https" product="nginx" version="1.18.0"/></port>
+      <port protocol="tcp" portid="6379"><state state="open"/><service name="redis" product="Redis key-value store" version="6.0.9"/></port>
+    </ports>
+  </host>
+</nmaprun>

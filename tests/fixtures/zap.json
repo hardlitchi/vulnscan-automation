@@ -1,0 +1,5 @@
+{"site":[{"@name":"https://app.example.com","alerts":[
+ {"pluginid":"10038","alertRef":"10038-1","alert":"Content Security Policy (CSP) Header Not Set","name":"Content Security Policy (CSP) Header Not Set","riskcode":"2","desc":"<p>CSP is missing.</p>","solution":"<p>Set the CSP header.</p>","reference":"<p>https://developer.mozilla.org/CSP</p>","cweid":"693",
+  "instances":[{"uri":"https://app.example.com/","method":"GET","param":"","evidence":""},{"uri":"https://app.example.com/","method":"GET"},{"uri":"https://app.example.com/login","method":"GET"}]},
+ {"pluginid":"10096","alertRef":"10096","name":"Timestamp Disclosure","riskcode":"0","desc":"","solution":"","reference":"","cweid":"-1","instances":[{"uri":"https://cdn.other.net/x.js","method":"GET","evidence":"1650000000"}]}
+]}]}

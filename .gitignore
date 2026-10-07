@@ -1,0 +1,10 @@
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.db
+reports/
+audit.log
+scope.yaml
+suppressions.yaml
