@@ -1,0 +1,35 @@
+# 使い方（管理者）:
+#   1. config/scope.yaml を用意する（scope.example.yaml をコピーして編集）
+#   2. docker compose up -d --build
+#   3. ブラウザで http://localhost:8000/ を開く
+#
+# ほかの PC からも使う場合は .env に以下を書いてから起動し直す:
+#   VULNSCAN_UI_HOST=0.0.0.0
+#   VULNSCAN_UI_PASSWORD=（長いパスワード）
+services:
+  vulnscan:
+    build: .
+    image: vulnscan:local
+    restart: unless-stopped
+    # 診断の通信をホストから出すため、ホストのネットワークをそのまま使う
+    network_mode: host
+    environment:
+      VULNSCAN_UI_USER: ${VULNSCAN_UI_USER:-admin}
+      VULNSCAN_UI_PASSWORD: ${VULNSCAN_UI_PASSWORD:-}
+      VULNSCAN_SLACK_WEBHOOK: ${VULNSCAN_SLACK_WEBHOOK:-}
+    volumes:
+      # スキャナのコンテナを起動するため Docker を使う（ホストの root 相当の権限を持つ点に注意）
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config:/config:ro
+      # ZAP のコンテナにも同じパスでマウントするため、ホストと同じ絶対パスにする
+      - ${PWD}/data:${PWD}/data
+    command:
+      - web
+      - --scope=/config/scope.yaml
+      - --suppressions=/config/suppressions.yaml
+      - --host=${VULNSCAN_UI_HOST:-127.0.0.1}
+      - --port=${VULNSCAN_UI_PORT:-8000}
+      - --db=${PWD}/data/vulnscan.db
+      - --out=${PWD}/data/reports
+      - --audit-log=${PWD}/data/audit.log
+      - --docker

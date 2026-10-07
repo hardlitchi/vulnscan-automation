@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% block head %}{% endblock %}
+<title>{% block title %}脆弱性診断{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">🛡️ 脆弱性診断</a>
+  <nav>
+    <a href="/">ホーム</a>
+    <a href="/scan/new">診断を始める</a>
+    <a href="/runs">診断の履歴</a>
+    <a href="/targets">診断できる対象</a>
+  </nav>
+  {% if user %}<span class="user">{{ user }}</span>{% endif %}
+</header>
+<main>
+  {% if scope_error %}
+  <div class="banner danger">
+    <strong>設定ファイル（scope.yaml）を読み込めません。</strong> 管理者に連絡してください。
+    <div class="small">{{ scope_error }}</div>
+  </div>
+  {% endif %}
+  {% if kill_active %}
+  <div class="banner danger">
+    <strong>⛔ 緊急停止中です。</strong> 新しい診断は開始できず、実行中の診断も次のチェックの前に止まります。
+    {% if kill_file %}
+    <form method="post" action="/emergency-resume" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn small">緊急停止を解除する</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if current_job and request.url.path != "/jobs/" ~ current_job.id %}
+  <div class="banner info">
+    いま「{{ current_job.target }}」を診断しています。
+    <a href="/jobs/{{ current_job.id }}">進み具合を見る</a>
+  </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+<footer>許可を得た自社の対象だけを診断できます。対象の追加や変更は管理者に依頼してください。</footer>
+</body>
+</html>

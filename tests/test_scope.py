@@ -21,7 +21,7 @@ def test_allows_ip_in_cidr(guard):
 def test_denies_unlisted_target(guard):
     d = guard.authorize("https://example.org/", "passive")
     assert not d.allowed
-    assert "どの承認のスコープにも含まれていません" in d.reasons[0]
+    assert "許可リスト（scope.yaml）に登録されていない対象です" in d.reasons[0]
 
 
 def test_denies_ip_outside_cidr(guard):

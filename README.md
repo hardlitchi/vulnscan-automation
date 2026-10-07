@@ -7,6 +7,34 @@
 > 実行しません。第三者が所有・管理する資産を、所有者の書面による許可なく診断することは
 > 不正アクセス禁止法等に抵触するおそれがあります。
 
+## かんたんな使い方（画面で操作）
+
+ブラウザだけで診断の実行と結果の確認ができます。操作方法は
+**[使い方ガイド（画面で操作する方向け）](docs/user-guide.md)** を参照してください。
+
+![結果画面](docs/images/result.png)
+
+### 管理者向け: 画面の起動（Docker）
+
+```bash
+mkdir -p config data
+cp scope.example.yaml config/scope.yaml      # 診断してよい対象と承認情報を記入
+docker compose up -d --build
+# → ブラウザで http://localhost:8000/ を開く
+```
+
+- 既定では起動した PC からしか開けません。ほかの PC からも使う場合は `.env` に
+  `VULNSCAN_UI_HOST=0.0.0.0` と `VULNSCAN_UI_PASSWORD=（長いパスワード）` を書いて起動し直してください
+  （パスワード未設定のまま外部に公開する設定は起動時に拒否されます）。ログイン名は既定で `admin` です。
+- コンテナは診断ツールを起動するために Docker のソケットを使います（ホストの管理者権限に相当します）。
+  診断専用のサーバーで動かしてください。
+- 診断対象の追加・変更は画面からはできません。`config/scope.yaml` をレビューのうえ更新してください
+  （更新は画面の再起動なしで反映されます）。
+- 誤検知の登録は `config/suppressions.yaml`（`suppressions.example.yaml` を参照）。
+
+Docker を使わない場合: `pip install -e ".[web]"` のあと `vulnscan web -s scope.yaml --docker`
+（`--docker` を外すとローカルにインストールした nmap / nuclei を使います）。
+
 ## 特徴
 
 - **スコープガード**: 承認 ID・承認者・期間・時間帯・許可プロファイル・除外対象を
@@ -29,13 +57,13 @@
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev]"      # Web 画面も含む開発用一式
 cp scope.example.yaml scope.yaml          # 対象と承認情報を記入
 cp suppressions.example.yaml suppressions.yaml   # 任意
 vulnscan scope validate -s scope.yaml
 ```
 
-## 使い方
+## コマンドでの使い方（エンジニア向け）
 
 ```bash
 # 対象が診断可能かだけを確認（スキャンしない）

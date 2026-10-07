@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, run_status with context %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>脆弱性診断</h1>
+    <p>Webサイトやサーバーに、よく知られた弱点がないかを自動で確認します。</p>
+  </div>
+  <a class="btn primary big" href="/scan/new">▶ 診断を始める</a>
+</section>
+
+<section>
+  <h2>いま残っている問題</h2>
+  <p class="muted">これまでの診断で見つかり、まだ解消されていない問題の数です。</p>
+  <div class="cards">
+    {% for s in severities %}
+    <div class="card sev-bg-{{ s }}">
+      <div class="num">{{ counts.get(s, 0) }}</div>
+      <div>{{ badge(s) }}</div>
+      <div class="small">{{ labels.SEVERITY[s].guide }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if by_target %}
+  <h3>対象ごとの問題数（参考を除く）</h3>
+  <ul class="plain">
+    {% for t, n in by_target %}<li><span class="mono">{{ t }}</span>: {{ n }} 件</li>{% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+<section>
+  <h2>最近の診断</h2>
+  {% if runs %}
+  <div class="table-wrap"><table class="list">
+    <thead><tr><th>日時</th><th>対象</th><th>種類</th><th>状態</th><th>新しい問題</th><th></th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+    <tr>
+      <td>{{ r.started_at | jtime(tz) }}</td>
+      <td class="mono">{{ r.target }}</td>
+      <td>{{ labels.PROFILE[r.profile].label }}</td>
+      <td>{{ run_status(r.status) }}</td>
+      <td>{{ r.new }} 件</td>
+      <td><a href="/runs/{{ r.id }}">結果を見る</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p><a href="/runs">すべての履歴を見る →</a></p>
+  {% else %}
+  <p class="empty">まだ診断していません。「診断を始める」から最初の診断をしてみましょう。</p>
+  {% endif %}
+</section>
+
+{% if kill_file and not kill_active %}
+<section class="danger-zone">
+  <h2>緊急停止</h2>
+  <p>対象のサービスに影響が出ているなど、すぐに診断を止めたいときに押してください。</p>
+  <form method="post" action="/emergency-stop">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="btn danger">⛔ すべての診断を止める</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

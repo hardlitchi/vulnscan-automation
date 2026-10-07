@@ -8,3 +8,6 @@ reports/
 audit.log
 scope.yaml
 suppressions.yaml
+data/
+.env
+stop

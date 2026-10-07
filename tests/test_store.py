@@ -65,3 +65,13 @@ def test_severity_normalization():
     assert f("x", sev="Informational").severity == "info"
     assert f("x", sev="weird").severity == "info"
     assert f("x", sev="CRITICAL").severity == "critical"
+
+
+def test_list_runs_counts_exclude_info(tmp_path):
+    s = Store(tmp_path / "db.sqlite")
+    r = s.start_run("T", "standard", "A", ["nuclei"])
+    s.record(r, "T", ["nuclei"], [f("a"), f("b", sev="info")])
+    s.finish_run(r, "completed")
+    [row] = s.list_runs()
+    assert (row["new"], row["open"], row["fixed"], row["status"]) == (1, 1, 0, "completed")
+    assert [x.rule_id for x in s.open_findings()] in (["a", "b"], ["b", "a"])
