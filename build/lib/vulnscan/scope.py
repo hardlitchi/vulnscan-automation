@@ -9,6 +9,7 @@ from __future__ import annotations
 import fnmatch
 import ipaddress
 import os
+import re
 import socket
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -84,6 +85,31 @@ def _day_index(name: str) -> int:
         raise ScopeError(f"曜日が不正です: {name!r}") from e
 
 
+LOGIN_METHODS = ("form", "browser")
+
+
+@dataclass(frozen=True)
+class LoginConfig:
+    """ログインが必要な Web アプリを、ログイン後も診断するための設定。
+
+    パスワードはファイルに書かず、環境変数名（password_env）で指定する。
+    """
+
+    login_url: str
+    username: str
+    password_env: str
+    method: str = "form"  # form: フォーム送信 / browser: ブラウザで画面を操作してログイン
+    username_field: str = "username"
+    password_field: str = "password"
+    login_request_url: str | None = None
+    logged_in_regex: str | None = None
+    logged_out_regex: str | None = None
+    logout_paths: tuple[str, ...] = ()
+
+    def password(self) -> str | None:
+        return os.environ.get(self.password_env) or None
+
+
 @dataclass(frozen=True)
 class Authorization:
     id: str
@@ -98,6 +124,7 @@ class Authorization:
     time_window: TimeWindow | None
     rate_limit: RateLimit
     verify_dns: bool = True
+    login: LoginConfig | None = None
 
 
 @dataclass(frozen=True)
@@ -177,6 +204,48 @@ def _parse_authorization(raw: dict) -> Authorization:
         time_window=TimeWindow.parse(tw) if tw else None,
         rate_limit=RateLimit(int(rl.get("rps", 10)), int(rl.get("concurrency", 5))),
         verify_dns=bool(raw.get("verify_dns", True)),
+        login=_parse_login(raw.get("login"), aid, urls, domains),
+    )
+
+
+def _parse_login(raw, aid: str, urls: tuple[str, ...], domains: tuple[str, ...]):
+    if not raw:
+        return None
+    for key in ("login_url", "username", "password_env"):
+        if not raw.get(key):
+            raise ScopeError(f"{aid}: login に {key} がありません")
+    if raw.get("password"):
+        raise ScopeError(
+            f"{aid}: login にパスワードを直接書かないでください。password_env に環境変数名を指定します"
+        )
+    method = raw.get("method", "form")
+    if method not in LOGIN_METHODS:
+        raise ScopeError(f"{aid}: login.method は {LOGIN_METHODS} のいずれかです")
+    login_url = str(raw["login_url"])
+    request_url = raw.get("login_request_url")
+    for u in filter(None, [login_url, request_url]):
+        host = (urlsplit(u).hostname or "").lower()
+        in_scope = any(_url_within(u, base) for base in urls) or any(
+            _host_matches(host, d) for d in domains
+        )
+        if not in_scope:
+            raise ScopeError(f"{aid}: ログイン URL {u} が targets の範囲外です")
+    for pattern in filter(None, [raw.get("logged_in_regex"), raw.get("logged_out_regex")]):
+        try:
+            re.compile(pattern)
+        except re.error as e:
+            raise ScopeError(f"{aid}: 正規表現が不正です: {pattern} ({e})") from e
+    return LoginConfig(
+        login_url=login_url,
+        username=str(raw["username"]),
+        password_env=str(raw["password_env"]),
+        method=method,
+        username_field=str(raw.get("username_field", "username")),
+        password_field=str(raw.get("password_field", "password")),
+        login_request_url=str(request_url) if request_url else None,
+        logged_in_regex=raw.get("logged_in_regex"),
+        logged_out_regex=raw.get("logged_out_regex"),
+        logout_paths=tuple(str(p) for p in raw.get("logout_paths", ["/logout"])),
     )
 
 
@@ -417,6 +486,7 @@ __all__ = [
     "PROFILES",
     "Authorization",
     "Decision",
+    "LoginConfig",
     "RateLimit",
     "Scope",
     "ScopeError",

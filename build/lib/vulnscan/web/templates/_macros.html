@@ -6,7 +6,7 @@
 <article class="finding sev-border-{{ f.severity }}">
   <header>
     {{ badge(f.severity) }}
-    {% if tag %}<span class="tag">{{ tag }}</span>{% endif %}
+    {% if f.tool == "ai" %}<span class="tag ai-tag">🤖 AIの提案（要確認）</span>{% elif tag %}<span class="tag">{{ tag }}</span>{% endif %}
     <h4>{{ f.title }}</h4>
   </header>
   <dl>

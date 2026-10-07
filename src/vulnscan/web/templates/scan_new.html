@@ -56,6 +56,17 @@
       </label>
       {% endfor %}
     </fieldset>
+    {% if ai_enabled %}
+    <fieldset>
+      <legend>AIによる探索支援</legend>
+      <label class="choice block">
+        <input type="checkbox" name="use_ai" value="yes" {% if not ai_ready %}disabled{% endif %}>
+        <span>診断結果をAI（{{ ai_provider }}）が確認し、人手で追加確認すべき観点（権限の不備や業務ロジックの欠陥など）を提案します。<br>
+        <span class="small muted">AIは対象へ新たなアクセスはしません。提案は人の確認が前提です。</span>
+        {% if not ai_ready %}<br><span class="small">※ 現在は利用できません（APIキー未設定など）。管理者に確認してください。</span>{% endif %}</span>
+      </label>
+    </fieldset>
+    {% endif %}
   </details>
 
   <fieldset>

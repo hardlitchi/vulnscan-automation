@@ -29,6 +29,7 @@ TOOL = {
     "nmap": "公開されているサービスの確認（nmap）",
     "nuclei": "よく知られた脆弱性の確認（nuclei）",
     "zap": "Webサイトの動作確認（OWASP ZAP、URL を指定した対象のみ）",
+    "ai": "AIによる探索的診断の観点提案（要人手確認）",
 }
 
 RUN_STATUS = {

@@ -20,6 +20,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from ..ai import AIConfig
 from ..engine import ScanOptions, execute_scan
 from ..models import SEVERITIES, Finding, severity_rank
 from ..runners import RUNNERS
@@ -44,6 +45,7 @@ class WebSettings:
     username: str = "admin"
     password: str | None = None
     run_in_background: bool = True
+    ai: AIConfig | None = None
 
 
 def create_app(settings: WebSettings, guard_factory=ScopeGuard) -> FastAPI:
@@ -131,6 +133,11 @@ def create_app(settings: WebSettings, guard_factory=ScopeGuard) -> FastAPI:
             "kill_file": scope.kill_switch_file if scope else None,
             "current_job": jobs.current(),
             "tz": scope.timezone if scope else None,
+            "ai_enabled": bool(settings.ai and settings.ai.enabled),
+            "ai_ready": bool(
+                settings.ai and settings.ai.enabled and not settings.ai.availability_error()
+            ),
+            "ai_provider": settings.ai.provider if settings.ai else "none",
         }
         return templates.TemplateResponse(request, name, {**base, **ctx})
 
@@ -199,6 +206,7 @@ def create_app(settings: WebSettings, guard_factory=ScopeGuard) -> FastAPI:
         profile: Annotated[str, Form()] = "standard",
         tools: Annotated[list[str] | None, Form()] = None,
         confirm: Annotated[str, Form()] = "",
+        use_ai: Annotated[str, Form()] = "",
     ):
         check_csrf(csrf)
         form = {
@@ -244,6 +252,7 @@ def create_app(settings: WebSettings, guard_factory=ScopeGuard) -> FastAPI:
             use_docker=settings.use_docker,
             timeout=settings.timeout,
             actor=user or "local",
+            ai=settings.ai if (use_ai and settings.ai and settings.ai.enabled) else None,
         )
 
         def work(job: Job) -> None:

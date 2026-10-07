@@ -14,6 +14,8 @@ import os
 import sys
 from pathlib import Path
 
+from .ai import load_ai_config
+from .ai.base import PROVIDERS
 from .engine import ScanOptions, execute_scan
 from .models import SEVERITIES, severity_rank
 from .runners import RUNNERS
@@ -66,6 +68,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=SEVERITIES,
         help="Slack 通知する重大度の下限（VULNSCAN_SLACK_WEBHOOK 設定時）",
     )
+    s.add_argument(
+        "--ai",
+        default="none",
+        choices=PROVIDERS,
+        help="AI 探索支援を使うプロバイダ（既定は none = 使わない）。API キーは各環境変数から読む",
+    )
+    s.add_argument("--ai-model", help="AI のモデル名（省略時はプロバイダの既定）")
     w = sub.add_parser("web", help="ブラウザで操作する画面を起動する")
     w.add_argument("-s", "--scope", required=True)
     w.add_argument("--host", default="127.0.0.1", help="待ち受けアドレス（既定は自分の PC のみ）")
@@ -76,6 +85,10 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("--suppressions", default="suppressions.yaml")
     w.add_argument("--docker", action="store_true", help="スキャナを Docker イメージで実行する")
     w.add_argument("--timeout", type=int, default=3600)
+    w.add_argument(
+        "--ai", default="none", choices=PROVIDERS, help="AI 探索支援を使うプロバイダ（既定は none）"
+    )
+    w.add_argument("--ai-model", help="AI のモデル名（省略時はプロバイダの既定）")
     return p
 
 
@@ -122,6 +135,10 @@ def run_scan(args, scope: Scope) -> int:
         return EXIT_CONFIG
 
     targets = iter_scope_targets(scope) if args.all else args.target
+    ai = load_ai_config(args.ai, args.ai_model)
+    if ai.enabled and (err := ai.availability_error()):
+        print(f"AI 探索支援を使えません: {err}", file=sys.stderr)
+        return EXIT_CONFIG
     opts = ScanOptions(
         profile=args.profile,
         tools=tools,
@@ -132,6 +149,7 @@ def run_scan(args, scope: Scope) -> int:
         dry_run=args.dry_run,
         timeout=args.timeout,
         notify_min=args.notify_min,
+        ai=ai,
     )
     outcome = execute_scan(scope, targets, opts, suppressions=rules)
 
@@ -161,6 +179,7 @@ def run_web(args) -> int:
         timeout=args.timeout,
         username=os.environ.get("VULNSCAN_UI_USER", "admin"),
         password=os.environ.get("VULNSCAN_UI_PASSWORD"),
+        ai=load_ai_config(args.ai, args.ai_model),
     )
     try:
         return serve(settings, host=args.host, port=args.port)

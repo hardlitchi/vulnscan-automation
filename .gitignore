@@ -11,3 +11,4 @@ suppressions.yaml
 data/
 .env
 stop
+build/

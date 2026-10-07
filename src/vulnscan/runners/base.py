@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..models import Finding
-from ..scope import Decision, Target
+from ..scope import Decision, LoginConfig, Target
 
 
 @dataclass
@@ -25,6 +25,11 @@ class RunContext:
     @property
     def profile(self) -> str:
         return self.decision.profile
+
+    @property
+    def login(self) -> LoginConfig | None:
+        auth = self.decision.authorization
+        return auth.login if auth else None
 
 
 @dataclass

@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from .ai import AIConfig, advise
 from .audit import AuditLog
 from .models import Finding
 from .notify import build_message, post_slack
@@ -22,6 +23,7 @@ from .store import Store
 from .suppressions import Suppression, split_suppressed
 
 Log = Callable[[str], None]
+AIComplete = Callable[[str, str, int], str]
 
 
 @dataclass
@@ -36,6 +38,7 @@ class ScanOptions:
     timeout: int = 3600
     notify_min: str = "high"
     actor: str | None = None  # 監査ログに残す操作者（Web 画面のログインユーザーなど）
+    ai: AIConfig | None = None  # AI 探索支援（既定は None = 使わない）
 
 
 @dataclass
@@ -57,6 +60,7 @@ def execute_scan(
     log: Log = print,
     guard: ScopeGuard | None = None,
     on_run_started: Callable[[int], None] | None = None,
+    ai_complete: AIComplete | None = None,
 ) -> ScanOutcome:
     unknown = [t for t in opts.tools if t not in RUNNERS]
     if unknown:
@@ -158,6 +162,9 @@ def execute_scan(
                     else:
                         findings.append(f)
 
+            if opts.ai and opts.ai.enabled and not aborted and not opts.dry_run:
+                _run_ai(opts.ai, raw, findings, audit, log, extra, ai_complete)
+
             if store:
                 report.diff = store.record(run_id, raw, completed, findings)
                 failed = aborted or any(r.error for r in report.results)
@@ -187,3 +194,38 @@ def execute_scan(
                 log(f"Slack 通知に失敗しました: {e}")
 
     return ScanOutcome(reports, md_path, any_denied)
+
+
+def _run_ai(
+    ai: AIConfig,
+    target: str,
+    findings: list[Finding],
+    audit: AuditLog,
+    log: Log,
+    extra: dict,
+    complete: AIComplete | None,
+) -> None:
+    """AI 助言を求め、仮説を Finding として findings に追記する。失敗しても診断は止めない。"""
+    err = ai.availability_error()
+    if err:
+        log(f"  - AI 探索支援はスキップ: {err}")
+        return
+    urls = sorted({f.location for f in findings if f.location.startswith(("http://", "https://"))})
+    log(f"  > AI 探索支援（{ai.provider}）に助言を求めています")
+    try:
+        hypotheses = advise(ai, target, findings, urls, complete=complete)
+    except Exception as e:  # ネットワークや応答形式の失敗は診断全体を止めない
+        log(f"  ! AI 探索支援に失敗しました: {e}")
+        audit.write("ai_error", target=target, provider=ai.provider, error=str(e), **extra)
+        return
+    for h in hypotheses:
+        findings.append(h.to_finding(target))
+    log(f"  ✓ AI 探索支援: {len(hypotheses)} 件の観点")
+    audit.write(
+        "ai_advice",
+        target=target,
+        provider=ai.provider,
+        model=ai.resolved_model(),
+        count=len(hypotheses),
+        **extra,
+    )

@@ -25,6 +25,19 @@ authorizations:
     time_window: "Mon-Fri 22:00-06:00"          # 日付をまたぐ指定も可
     rate_limit: { rps: 10, concurrency: 5 }
     verify_dns: true
+    # ログインが必要な Web アプリは、ログイン後も自動診断できる（任意）
+    # パスワードはここに書かず、環境変数名（password_env）で指定する
+    login:
+      method: form                              # form（フォーム送信）または browser（画面操作）
+      login_url: "https://app.example.com/login"
+      # login_request_url: "https://app.example.com/api/login"  # 送信先が別なら指定
+      username: "scan-test-user"
+      password_env: "VULNSCAN_LOGIN_PW_APP"     # この環境変数からパスワードを読む
+      username_field: "email"                   # フォームの入力欄名
+      password_field: "password"
+      logged_in_regex: "ログアウト"              # ログイン成功の判定（任意だが推奨）
+      logged_out_regex: "ログイン"
+      logout_paths: ["/logout"]                 # 診断中に踏まないよう除外するパス
 
   - id: AUTH-2026-002
     approved_by: "開発部 部長"

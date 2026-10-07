@@ -9,8 +9,10 @@ from html import unescape
 
 from ..models import Finding
 from .base import RunContext, Runner, RunResult
+from .zap_plan import build_plan
 
 REPORT_NAME = "zap-report.json"
+PLAN_NAME = "zap-plan.yaml"
 RISK = {"0": "info", "1": "low", "2": "medium", "3": "high"}
 
 
@@ -28,10 +30,8 @@ class ZapRunner(Runner):
         url = ctx.target.url
         if not url:
             return None
-        script = "zap-full-scan.py" if ctx.profile == "active" else "zap-baseline.py"
         workdir = ctx.workdir.resolve()
-        # ZAP は Docker イメージで提供されるスクリプトを使うため常に docker 経由で実行する
-        return [
+        base = [
             "docker",
             "run",
             "--rm",
@@ -41,16 +41,21 @@ class ZapRunner(Runner):
             f"{workdir}:/zap/wrk:rw",
             "-u",
             "zap",
-            self.image,
-            script,
-            "-t",
-            url,
-            "-J",
-            REPORT_NAME,
-            "-I",
-            "-m",
-            "5",
         ]
+        if ctx.login:
+            # パスワードは値ではなく変数名で渡す（-e NAME は親プロセスの環境から転送される）
+            base += ["-e", ctx.login.password_env]
+            return [
+                *base,
+                self.image,
+                "zap.sh",
+                "-cmd",
+                "-autorun",
+                f"/zap/wrk/{PLAN_NAME}",
+            ]
+        # ログイン不要な場合は従来どおり packaged scan を使う
+        script = "zap-full-scan.py" if ctx.profile == "active" else "zap-baseline.py"
+        return [*base, self.image, script, "-t", url, "-J", REPORT_NAME, "-I", "-m", "5"]
 
     def available(self, ctx: RunContext) -> bool:
         return shutil.which("docker") is not None
@@ -60,7 +65,25 @@ class ZapRunner(Runner):
             ctx.workdir.mkdir(parents=True, exist_ok=True)
             # コンテナ内の zap ユーザーがレポートを書き込めるようにする
             ctx.workdir.chmod(0o777)
+            if ctx.login:
+                err = self._write_plan(ctx)
+                if err:
+                    return RunResult(self.name, self.build_command(ctx) or [], error=err)
         return super().run(ctx, dry_run)
+
+    def _write_plan(self, ctx: RunContext) -> str | None:
+        """ログイン設定からプランを書き出す。問題があればエラー文を返す。"""
+        login = ctx.login
+        if not login.password():
+            return (
+                f"ログイン用パスワードが環境変数 {login.password_env} に設定されていません。"
+                "設定してから再実行してください。"
+            )
+        plan, _env_names = build_plan(
+            ctx.target.url, login, ctx.profile, REPORT_NAME, ctx.decision.rate_limit.rps
+        )
+        (ctx.workdir / PLAN_NAME).write_text(plan, encoding="utf-8")
+        return None
 
     def parse(self, stdout: str, ctx: RunContext) -> list[Finding]:
         path = ctx.workdir / REPORT_NAME

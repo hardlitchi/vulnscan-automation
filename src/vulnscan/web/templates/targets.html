@@ -16,6 +16,7 @@
     <dt>期間</dt><dd>{{ a.valid_from }} 〜 {{ a.valid_until }}</dd>
     <dt>実行できる時間帯</dt><dd>{% if a.time_window %}{% for d in a.time_window.days | sort %}{{ days[d] }}{% endfor %}曜日 {{ a.time_window.start.strftime("%H:%M") }}〜{{ a.time_window.end.strftime("%H:%M") }}{% else %}いつでも{% endif %}</dd>
     <dt>使える診断の種類</dt><dd>{% for p in a.allowed_profiles %}{{ labels.PROFILE[p].label }}{% if not loop.last %}、{% endif %}{% endfor %}</dd>
+    <dt>ログイン後の診断</dt><dd>{% if a.login %}対応（{{ a.login.username }} でログインして診断します）{% else %}なし（ログイン前のページのみ）{% endif %}</dd>
     {% if a.urls %}<dt>URL</dt><dd>{% for u in a.urls %}<a class="mono" href="/scan/new?target={{ u | urlencode }}">{{ u }}</a><br>{% endfor %}</dd>{% endif %}
     {% if a.domains %}<dt>ドメイン</dt><dd class="mono">{{ a.domains | join(", ") }}</dd>{% endif %}
     {% if a.cidrs %}<dt>IP アドレスの範囲</dt><dd class="mono">{{ a.cidrs | join(", ") }}</dd>{% endif %}

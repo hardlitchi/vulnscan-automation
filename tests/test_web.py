@@ -216,3 +216,54 @@ def test_errors_are_html(tmp_path):
     r = client.get("/runs/999")
     assert r.headers["content-type"].startswith("text/html")
     assert "この診断結果は見つかりません" in r.text
+
+
+def test_ai_toggle_hidden_when_disabled(tmp_path):
+    client, _, _ = make_client(tmp_path)
+    assert "AIによる探索支援" not in client.get("/scan/new").text
+
+
+def test_ai_flow(tmp_path, fake_nuclei, monkeypatch):
+    import json as _json
+
+    from vulnscan.ai import AIConfig
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    client, app, settings = make_client(tmp_path)
+    settings.ai = AIConfig(provider="claude")
+
+    def fake_ai(system, user, max_tokens):
+        return _json.dumps(
+            {
+                "hypotheses": [
+                    {
+                        "title": "連番IDで他人の情報が見える恐れ",
+                        "area": "authorization",
+                        "severity": "high",
+                        "confidence": "medium",
+                        "rationale": "IDが連番",
+                        "verification": "別IDでアクセス",
+                        "location": "https://app.example.com/u/2",
+                    }
+                ]
+            }
+        )
+
+    # execute_scan は engine 側で ai_complete を使う。ここでは app 経由ではなく
+    # engine を直接差し替えるのではなく、provider を fake にするため monkeypatch。
+    monkeypatch.setattr("vulnscan.ai.base._provider_complete", lambda c: fake_ai)
+
+    r = client.get("/scan/new")
+    assert "AIによる探索支援" in r.text
+    data = {
+        "csrf": app.state.csrf,
+        "target": "https://app.example.com/",
+        "profile": "standard",
+        "tools": ["nuclei"],
+        "confirm": "yes",
+        "use_ai": "yes",
+    }
+    client.post("/scan", data=data, follow_redirects=False)
+    run = client.get("/runs/1")
+    assert "AIの提案" in run.text
+    assert "連番IDで他人の情報が見える恐れ" in run.text
