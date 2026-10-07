@@ -1,0 +1,3 @@
+[INF] some log line
+{"template-id":"CVE-2021-41773","info":{"name":"Apache 2.4.49 Path Traversal","severity":"critical","description":"Path traversal","remediation":"Upgrade Apache","reference":["https://nvd.nist.gov/vuln/detail/CVE-2021-41773"],"classification":{"cve-id":["cve-2021-41773"],"cvss-score":9.8}},"host":"https://app.example.com","matched-at":"https://app.example.com/cgi-bin/.%2e/etc/passwd","extracted-results":["root:x:0:0"]}
+{"template-id":"tech-detect","matcher-name":"nginx","info":{"name":"Wappalyzer Technology Detection","severity":"info"},"host":"https://app.example.com","matched-at":"https://app.example.com/"}

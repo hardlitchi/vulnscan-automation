@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}診断できる対象｜脆弱性診断{% endblock %}
+{% block content %}
+<h1>診断できる対象</h1>
+<p class="muted">ここに載っているものだけが診断できます。追加・変更は管理者に依頼してください（この画面からは変更できません）。</p>
+{% if scope %}
+<p>責任者: {{ scope.owner }}</p>
+{% for a in scope.authorizations %}
+<article class="auth {% if status[a.id] %}inactive{% endif %}">
+  <header>
+    <h3>{{ a.id }}</h3>
+    {% if status[a.id] %}<span class="status st-partial">{{ status[a.id] | join("・") }}</span>{% else %}<span class="status st-completed">いま診断できます</span>{% endif %}
+  </header>
+  <dl class="meta">
+    <dt>承認した人</dt><dd>{{ a.approved_by }}</dd>
+    <dt>期間</dt><dd>{{ a.valid_from }} 〜 {{ a.valid_until }}</dd>
+    <dt>実行できる時間帯</dt><dd>{% if a.time_window %}{% for d in a.time_window.days | sort %}{{ days[d] }}{% endfor %}曜日 {{ a.time_window.start.strftime("%H:%M") }}〜{{ a.time_window.end.strftime("%H:%M") }}{% else %}いつでも{% endif %}</dd>
+    <dt>使える診断の種類</dt><dd>{% for p in a.allowed_profiles %}{{ labels.PROFILE[p].label }}{% if not loop.last %}、{% endif %}{% endfor %}</dd>
+    <dt>ログイン後の診断</dt><dd>{% if a.login %}対応（{{ a.login.username }} でログインして診断します）{% else %}なし（ログイン前のページのみ）{% endif %}</dd>
+    {% if a.urls %}<dt>URL</dt><dd>{% for u in a.urls %}<a class="mono" href="/scan/new?target={{ u | urlencode }}">{{ u }}</a><br>{% endfor %}</dd>{% endif %}
+    {% if a.domains %}<dt>ドメイン</dt><dd class="mono">{{ a.domains | join(", ") }}</dd>{% endif %}
+    {% if a.cidrs %}<dt>IP アドレスの範囲</dt><dd class="mono">{{ a.cidrs | join(", ") }}</dd>{% endif %}
+    {% if a.exclusions %}<dt>対象外</dt><dd class="mono">{{ a.exclusions | join(", ") }}</dd>{% endif %}
+  </dl>
+</article>
+{% endfor %}
+{% endif %}
+{% endblock %}

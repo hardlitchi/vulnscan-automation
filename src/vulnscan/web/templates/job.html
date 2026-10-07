@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block head %}{% if job.active %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block title %}診断の進み具合｜脆弱性診断{% endblock %}
+{% block content %}
+<h1>診断の進み具合</h1>
+<dl class="meta">
+  <dt>対象</dt><dd class="mono">{{ job.target }}</dd>
+  <dt>種類</dt><dd>{{ labels.PROFILE[job.profile].label }}</dd>
+  <dt>開始</dt><dd>{{ job.created_at | jtime(tz) }}</dd>
+  <dt>状態</dt><dd><span class="status st-{{ job.status }}">{{ labels.JOB_STATUS[job.status] }}</span></dd>
+</dl>
+
+{% if job.active %}
+<div class="banner info"><span class="spinner"></span> 診断しています。数分〜数十分かかることがあります。このページは自動で更新されます。閉じても診断は続きます。</div>
+{% elif job.status == "done" %}
+<div class="banner ok">✅ 診断が終わりました。</div>
+{% for rid in job.run_ids %}
+<p><a class="btn primary big" href="/runs/{{ rid }}">結果を見る</a></p>
+{% endfor %}
+{% else %}
+<div class="banner danger">診断を最後まで実行できませんでした。{{ job.error or "" }}</div>
+{% endif %}
+
+<details {% if not job.active %}open{% endif %}>
+  <summary>実行の記録（担当者向け）</summary>
+  <pre class="log">{% for line in job.log %}{{ line }}
+{% endfor %}</pre>
+</details>
+{% endblock %}

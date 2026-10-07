@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import run_status with context %}
+{% block title %}診断の履歴｜脆弱性診断{% endblock %}
+{% block content %}
+<h1>診断の履歴</h1>
+{% if runs %}
+<div class="table-wrap"><table class="list">
+  <thead><tr><th>日時</th><th>対象</th><th>種類</th><th>状態</th><th>新しい問題</th><th>残っている問題</th><th>解消</th><th></th></tr></thead>
+  <tbody>
+  {% for r in runs %}
+  <tr>
+    <td>{{ r.started_at | jtime(tz) }}</td>
+    <td class="mono">{{ r.target }}</td>
+    <td>{{ labels.PROFILE[r.profile].label }}</td>
+    <td>{{ run_status(r.status) }}</td>
+    <td>{{ r.new }}</td>
+    <td>{{ r.open }}</td>
+    <td>{{ r.fixed }}</td>
+    <td><a href="/runs/{{ r.id }}">結果を見る</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<p class="empty">まだ診断していません。</p>
+{% endif %}
+{% endblock %}

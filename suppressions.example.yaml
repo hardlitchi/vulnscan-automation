@@ -1,0 +1,11 @@
+# 誤検知・リスク受容の登録（例）。reason と expires は必須。期限を過ぎると再び報告されます。
+suppressions:
+  - fingerprint: 0123456789abcdef0123456789abcdef   # レポートの <!-- fingerprint --> の値
+    status: false_positive
+    reason: "WAF のブロックページを誤検知"
+    expires: 2027-03-31
+  - rule_id: zap-10038                               # 対象を問わずこのルールを抑制
+    target: https://app.example.com/
+    status: accepted_risk
+    reason: "CSP は次期リリースで対応予定（チケット SEC-123）"
+    expires: 2026-12-31

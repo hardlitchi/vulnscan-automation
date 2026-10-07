@@ -1,0 +1,50 @@
+# 診断スコープ定義（例）
+# - このファイルをコピーして scope.yaml を作成してください（scope.yaml は .gitignore 済み）
+# - 運用では別の非公開リポジトリで管理し、変更は必ずレビュー・承認を経てください
+# - ここに記載のない対象は、スコープガードによりどのスキャナも実行されません
+
+owner: security-team@example.com
+timezone: Asia/Tokyo
+# このファイルが存在する間は全診断を停止する（緊急停止）
+kill_switch_file: /var/run/vulnscan.stop
+
+authorizations:
+  - id: AUTH-2026-001
+    approved_by: "情報システム部 部長"
+    valid_from: 2026-10-01
+    valid_until: 2027-03-31
+    targets:
+      # ドメインの解決先 IP はこの CIDR 内であることも確認する（verify_dns: true）
+      cidrs: ["10.0.10.0/24"]
+      domains: ["app.example.com", "*.stg.example.com"]
+      urls: ["https://app.example.com/"]
+    exclusions:
+      - "10.0.10.1"                              # 本番ルータ
+      - "https://app.example.com/admin/"         # 管理画面配下は対象外
+    allowed_profiles: [passive, standard]        # active は別承認で検証環境のみ
+    time_window: "Mon-Fri 22:00-06:00"          # 日付をまたぐ指定も可
+    rate_limit: { rps: 10, concurrency: 5 }
+    verify_dns: true
+    # ログインが必要な Web アプリは、ログイン後も自動診断できる（任意）
+    # パスワードはここに書かず、環境変数名（password_env）で指定する
+    login:
+      method: form                              # form（フォーム送信）または browser（画面操作）
+      login_url: "https://app.example.com/login"
+      # login_request_url: "https://app.example.com/api/login"  # 送信先が別なら指定
+      username: "scan-test-user"
+      password_env: "VULNSCAN_LOGIN_PW_APP"     # この環境変数からパスワードを読む
+      username_field: "email"                   # フォームの入力欄名
+      password_field: "password"
+      logged_in_regex: "ログアウト"              # ログイン成功の判定（任意だが推奨）
+      logged_out_regex: "ログイン"
+      logout_paths: ["/logout"]                 # 診断中に踏まないよう除外するパス
+
+  - id: AUTH-2026-002
+    approved_by: "開発部 部長"
+    valid_from: 2026-10-01
+    valid_until: 2026-12-31
+    targets:
+      cidrs: ["10.0.20.0/24"]
+      urls: ["https://app.stg.example.com/"]
+    allowed_profiles: [passive, standard, active]
+    rate_limit: { rps: 20, concurrency: 10 }

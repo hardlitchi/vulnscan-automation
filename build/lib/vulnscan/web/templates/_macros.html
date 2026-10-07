@@ -1,0 +1,34 @@
+{% macro badge(sev) -%}
+<span class="badge sev-{{ sev }}">{{ labels.SEVERITY[sev].label }}</span>
+{%- endmacro %}
+
+{% macro finding_card(f, first_seen=None, tag=None) -%}
+<article class="finding sev-border-{{ f.severity }}">
+  <header>
+    {{ badge(f.severity) }}
+    {% if f.tool == "ai" %}<span class="tag ai-tag">🤖 AIの提案（要確認）</span>{% elif tag %}<span class="tag">{{ tag }}</span>{% endif %}
+    <h4>{{ f.title }}</h4>
+  </header>
+  <dl>
+    <dt>場所</dt><dd class="mono">{{ f.location }}</dd>
+    <dt>対応の目安</dt><dd>{{ labels.SEVERITY[f.severity].guide }}</dd>
+    {% if f.cve %}<dt>脆弱性番号</dt><dd>{{ f.cve | join(", ") }}{% if f.cvss %}（深刻度スコア {{ f.cvss }}）{% endif %}</dd>{% endif %}
+    {% if first_seen and first_seen.get(f.fingerprint) %}<dt>最初に見つかった日</dt><dd>{{ first_seen[f.fingerprint] | jtime(tz) }}</dd>{% endif %}
+  </dl>
+  {% if f.description %}<p class="desc"><strong>どんな問題？</strong><br>{{ f.description }}</p>{% endif %}
+  {% if f.remediation %}<p class="fix"><strong>どうすればいい？</strong><br>{{ f.remediation }}</p>{% endif %}
+  <details>
+    <summary>担当者向けの詳細</summary>
+    <dl>
+      <dt>ツール / ルール</dt><dd class="mono">{{ f.tool }} / {{ f.rule_id }}</dd>
+      {% if f.evidence %}<dt>証跡</dt><dd class="mono">{{ f.evidence }}</dd>{% endif %}
+      {% if f.references %}<dt>参考</dt><dd>{% for r in f.references[:5] %}{% if r.startswith("http") %}<a href="{{ r }}" rel="noopener noreferrer" target="_blank">{{ r }}</a>{% else %}{{ r }}{% endif %}<br>{% endfor %}</dd>{% endif %}
+      <dt>ID</dt><dd class="mono">{{ f.fingerprint }}</dd>
+    </dl>
+  </details>
+</article>
+{%- endmacro %}
+
+{% macro run_status(status) -%}
+<span class="status st-{{ status }}">{{ labels.RUN_STATUS.get(status, status) }}</span>
+{%- endmacro %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, finding_card, run_status with context %}
+{% block title %}診断結果｜脆弱性診断{% endblock %}
+{% block content %}
+<h1>診断結果</h1>
+<dl class="meta">
+  <dt>対象</dt><dd class="mono">{{ run.target }}</dd>
+  <dt>日時</dt><dd>{{ run.started_at | jtime(tz) }}</dd>
+  <dt>種類</dt><dd>{{ labels.PROFILE[run.profile].label }}</dd>
+  <dt>状態</dt><dd>{{ run_status(run.status) }}</dd>
+  <dt>承認</dt><dd>{{ run.authorization_id }}</dd>
+</dl>
+
+{% if run.status == "partial" %}
+<div class="banner warn">一部のチェックが実行できませんでした。結果が不完全な可能性があります。詳しくは担当者に確認してください。</div>
+{% endif %}
+
+<div class="cards">
+  {% for s in severities %}
+  <div class="card sev-bg-{{ s }}"><div class="num">{{ counts.get(s, 0) }}</div><div>{{ badge(s) }}</div></div>
+  {% endfor %}
+</div>
+<p><a class="btn" href="/runs/{{ run.id }}/findings.csv">📄 一覧を CSV（Excel）でダウンロード</a></p>
+
+<section>
+  <h2>🆕 今回新しく見つかった問題（{{ actionable_new | length }} 件）</h2>
+  {% for f in actionable_new %}{{ finding_card(f, first_seen) }}{% else %}<p class="empty ok">新しい問題はありませんでした。</p>{% endfor %}
+</section>
+
+<section>
+  <h2>⏳ 以前から残っている問題（{{ actionable_old | length }} 件）</h2>
+  {% for f in actionable_old %}{{ finding_card(f, first_seen) }}{% else %}<p class="empty">ありません。</p>{% endfor %}
+</section>
+
+{% if fixed %}
+<section>
+  <h2>✅ 解消された問題（{{ fixed | length }} 件）</h2>
+  <p class="muted">前回は見つかっていて、今回は見つからなかった問題です。</p>
+  <ul class="plain">{% for f in fixed %}<li>{{ badge(f.severity) }} {{ f.title }} <span class="mono small">{{ f.location }}</span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if info_items %}
+<section>
+  <details>
+    <summary>参考情報（対応不要）を見る（{{ info_items | length }} 件）</summary>
+    <div class="table-wrap"><table class="list">
+      <thead><tr><th>内容</th><th>場所</th></tr></thead>
+      <tbody>{% for f in info_items %}<tr><td>{{ f.title }}</td><td class="mono small">{{ f.location }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </details>
+</section>
+{% endif %}
+
+{% if suppressed %}
+<section>
+  <details>
+    <summary>対応不要として登録済みの問題（{{ suppressed | length }} 件）</summary>
+    <ul class="plain">{% for f, s in suppressed %}<li>{{ badge(f.severity) }} {{ f.title }} — 理由: {{ s.reason }}（{{ s.expires }} まで）</li>{% endfor %}</ul>
+  </details>
+</section>
+{% endif %}
+{% endblock %}

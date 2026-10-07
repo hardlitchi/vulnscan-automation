@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}診断を始める｜脆弱性診断{% endblock %}
+{% block content %}
+<h1>診断を始める</h1>
+
+{% if errors %}
+<div class="banner danger"><ul class="plain">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if denied %}
+<div class="banner danger">
+  <strong>この内容では診断できません。</strong>
+  <ul>{% for r in denied.reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+  <p class="small">許可されている対象・時間帯・診断の種類は「<a href="/targets">診断できる対象</a>」で確認できます。追加が必要な場合は管理者に依頼してください。</p>
+</div>
+{% endif %}
+
+<form method="post" action="/scan" class="steps">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+
+  <fieldset>
+    <legend><span class="step">1</span> 何を診断しますか？</legend>
+    {% if choices %}
+      {% for c in choices %}
+      <label class="choice">
+        <input type="radio" name="target" value="{{ c }}" {% if form.target == c %}checked{% endif %}>
+        <span class="mono">{{ c }}</span>
+      </label>
+      {% endfor %}
+    {% endif %}
+    <label class="choice">
+      <input type="radio" name="target" value="__other__" {% if form.target == "__other__" or (not choices) %}checked{% endif %}>
+      <span>一覧にないもの（URL・IP アドレス・ホスト名を入力）</span>
+    </label>
+    <input type="text" name="target_other" value="{{ form.target_other }}" placeholder="例: https://app.example.com/ や 10.0.10.5" class="wide">
+    <p class="small muted">許可されていない対象は、ここで入力しても診断されません。</p>
+  </fieldset>
+
+  <fieldset>
+    <legend><span class="step">2</span> どのくらい詳しく調べますか？</legend>
+    {% for p in profiles %}
+    <label class="choice block">
+      <input type="radio" name="profile" value="{{ p }}" {% if form.profile == p %}checked{% endif %}>
+      <span><strong>{{ labels.PROFILE[p].label }}</strong><br><span class="small">{{ labels.PROFILE[p].desc }}</span></span>
+    </label>
+    {% endfor %}
+  </fieldset>
+
+  <details class="advanced">
+    <summary>詳細設定（ふつうは変更不要です）</summary>
+    <fieldset>
+      <legend>チェック内容</legend>
+      {% for t in tools %}
+      <label class="choice block">
+        <input type="checkbox" name="tools" value="{{ t }}" {% if t in form.tools %}checked{% endif %}>
+        <span>{{ labels.TOOL[t] }}</span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    {% if ai_enabled %}
+    <fieldset>
+      <legend>AIによる探索支援</legend>
+      <label class="choice block">
+        <input type="checkbox" name="use_ai" value="yes" {% if not ai_ready %}disabled{% endif %}>
+        <span>診断結果をAI（{{ ai_provider }}）が確認し、人手で追加確認すべき観点（権限の不備や業務ロジックの欠陥など）を提案します。<br>
+        <span class="small muted">AIは対象へ新たなアクセスはしません。提案は人の確認が前提です。</span>
+        {% if not ai_ready %}<br><span class="small">※ 現在は利用できません（APIキー未設定など）。管理者に確認してください。</span>{% endif %}</span>
+      </label>
+    </fieldset>
+    {% endif %}
+  </details>
+
+  <fieldset>
+    <legend><span class="step">3</span> 確認</legend>
+    <label class="choice block">
+      <input type="checkbox" name="confirm" value="yes">
+      <span>この対象は自社が管理しているもので、診断の許可を得ています。</span>
+    </label>
+  </fieldset>
+
+  <button class="btn primary big" {% if kill_active or current_job %}disabled{% endif %}>▶ 診断を開始する</button>
+  {% if current_job %}<p class="small">ほかの診断が終わると開始できます。</p>{% endif %}
+</form>
+{% endblock %}
