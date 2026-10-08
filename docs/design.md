@@ -13,7 +13,7 @@ scope.yaml ──▶ スコープガード ──拒否──▶ 監査ログ / 
                    ▼
         SQLite に保存し前回と比較（新規・継続・解消）→ 抑制リスト適用
                    ▼
-        Markdown / JSON レポート、Slack 通知
+        Markdown / JSON レポート、Slack 通知、署名付き webhook（任意）
 ```
 
 ## スコープガードの判定順
@@ -38,6 +38,23 @@ scope.yaml ──▶ スコープガード ──拒否──▶ 監査ログ / 
 
 前回 open だった指摘が今回出なかった場合に「解消」とします。ただし今回正常に
 完了したツールの指摘に限ります（ツールが失敗した回に誤って解消扱いしないため）。
+
+## 署名付き webhook（MeshConsole 連携）
+
+`notify.build_webhook_payload` が対象ごとの未対応（`change`: new / persisting）と解消（fixed）を
+まとめ、`notify.post_webhook` が `X-Vulnscan-Signature`（`"<timestamp>.<本文>"` の HMAC-SHA256）を
+付けて送ります。受け手は時刻のずれ（MeshConsole は ±5 分）と署名を確かめてから取り込みます。
+
+- 毎回すべての未対応を送る（差分だけでなく状態を送る）ので、受け手が一度取りこぼしても次回で揃います
+- `started_at` / `finished_at` と `scanner.source_ips` を送るので、受け手は「診断中に自分の検知が
+  反応したか」（検知の自己テスト）と、スキャナを自動ブロックしない設定に使えます
+- スキャナは MeshConsole と別のホストで動かす前提です（同じホストだと自分自身を診断することになり、
+  送信元 IP での区別もできません）
+
+## スキャナのバージョン固定
+
+`:latest` / `:stable` は診断内容が予告なく変わり、差分の「新規」「解消」が揺れるため、
+イメージのタグを固定しています。`VULNSCAN_IMAGE_<NAME>` で一時的に上書きできます。
 
 ## 今後の拡張
 

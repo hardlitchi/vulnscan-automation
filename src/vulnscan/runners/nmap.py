@@ -34,7 +34,7 @@ PROFILE_ARGS = {
 class NmapRunner(Runner):
     name = "nmap"
     binary = "nmap"
-    image = "instrumentisto/nmap:latest"
+    image = "instrumentisto/nmap:7.98"
 
     def build_command(self, ctx: RunContext) -> list[str]:
         rps = ctx.decision.rate_limit.rps

@@ -17,7 +17,7 @@ PROFILE_ARGS = {
 class NucleiRunner(Runner):
     name = "nuclei"
     binary = "nuclei"
-    image = "projectdiscovery/nuclei:latest"
+    image = "projectdiscovery/nuclei:v3.11.1"
 
     def build_command(self, ctx: RunContext) -> list[str]:
         t = ctx.target

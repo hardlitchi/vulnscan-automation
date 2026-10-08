@@ -28,7 +28,7 @@ def test_nmap_command_uses_rate_limit(guard, tmp_path):
 def test_nmap_docker_command(guard, tmp_path):
     cmd = NmapRunner().build_command(ctx(guard, "10.0.10.5", tmp_path, docker=True))
     assert cmd[:3] == ["docker", "run", "--rm"]
-    assert "instrumentisto/nmap:latest" in cmd
+    assert "instrumentisto/nmap:7.98" in cmd
 
 
 def test_nmap_parse(guard, tmp_path):

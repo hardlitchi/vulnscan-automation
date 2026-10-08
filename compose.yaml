@@ -17,6 +17,10 @@ services:
       VULNSCAN_UI_USER: ${VULNSCAN_UI_USER:-admin}
       VULNSCAN_UI_PASSWORD: ${VULNSCAN_UI_PASSWORD:-}
       VULNSCAN_SLACK_WEBHOOK: ${VULNSCAN_SLACK_WEBHOOK:-}
+      # 結果を MeshConsole などへ署名付きで送る（任意。README「結果の送信」参照）
+      VULNSCAN_WEBHOOK_URL: ${VULNSCAN_WEBHOOK_URL:-}
+      VULNSCAN_WEBHOOK_SECRET: ${VULNSCAN_WEBHOOK_SECRET:-}
+      VULNSCAN_SOURCE_IPS: ${VULNSCAN_SOURCE_IPS:-}
     volumes:
       # スキャナのコンテナを起動するため Docker を使う（ホストの root 相当の権限を持つ点に注意）
       - /var/run/docker.sock:/var/run/docker.sock

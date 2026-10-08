@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -45,6 +46,8 @@ class RunResult:
 class Runner:
     name: str = ""
     binary: str = ""
+    # イメージはバージョンを固定する（:latest だと診断内容が予告なく変わり、差分が揺れる）。
+    # 更新するときは環境変数 VULNSCAN_IMAGE_<NAME>（例: VULNSCAN_IMAGE_NUCLEI）で上書きできる
     image: str = ""
     ok_returncodes: tuple[int, ...] = (0,)
 
@@ -58,8 +61,12 @@ class Runner:
     def skip_reason(self, ctx: RunContext) -> str:
         return "この対象には適用できません"
 
+    @property
+    def image_ref(self) -> str:
+        return os.environ.get(f"VULNSCAN_IMAGE_{self.name.upper()}") or self.image
+
     def docker_prefix(self, ctx: RunContext) -> list[str]:
-        return ["docker", "run", "--rm", "--network", "host", self.image]
+        return ["docker", "run", "--rm", "--network", "host", self.image_ref]
 
     def wrap(self, args: list[str], ctx: RunContext) -> list[str]:
         if ctx.use_docker:

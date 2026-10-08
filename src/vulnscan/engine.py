@@ -15,7 +15,7 @@ from pathlib import Path
 from .ai import AIConfig, advise
 from .audit import AuditLog
 from .models import Finding
-from .notify import build_message, post_slack
+from .notify import build_message, build_webhook_payload, post_slack, post_webhook
 from .report import TargetReport, render_json, render_markdown
 from .runners import RUNNERS, RunContext
 from .scope import Scope, ScopeGuard
@@ -68,7 +68,8 @@ def execute_scan(
     guard = guard or ScopeGuard(scope)
     audit = AuditLog(opts.audit_log)
     extra = {"actor": opts.actor} if opts.actor else {}
-    stamp = datetime.now(scope.timezone).strftime("%Y%m%d-%H%M%S-%f")
+    started = datetime.now(scope.timezone)
+    stamp = started.strftime("%Y%m%d-%H%M%S-%f")
     out_dir = Path(opts.out) / stamp
     store = None if opts.dry_run else Store(opts.db)
     reports: list[TargetReport] = []
@@ -192,6 +193,18 @@ def execute_scan(
                 post_slack(webhook, msg)
             except OSError as e:
                 log(f"Slack 通知に失敗しました: {e}")
+
+    hook_url = os.environ.get("VULNSCAN_WEBHOOK_URL")
+    if hook_url:
+        payload = build_webhook_payload(
+            reports, started.isoformat(timespec="seconds"), generated, str(md_path)
+        )
+        try:
+            post_webhook(hook_url, payload, os.environ.get("VULNSCAN_WEBHOOK_SECRET", ""))
+            log("結果を webhook に送りました")
+        except (OSError, ValueError) as e:
+            log(f"webhook への送信に失敗しました: {e}")
+            audit.write("webhook_error", url=hook_url, error=str(e), **extra)
 
     return ScanOutcome(reports, md_path, any_denied)
 

@@ -19,7 +19,7 @@ RISK = {"0": "info", "1": "low", "2": "medium", "3": "high"}
 class ZapRunner(Runner):
     name = "zap"
     binary = "docker"
-    image = "ghcr.io/zaproxy/zaproxy:stable"
+    image = "ghcr.io/zaproxy/zaproxy:2.16.1"
     # packaged scan は警告・失敗があっても 0〜3 を返す。-I で警告は 0 になる
     ok_returncodes = (0, 1, 2, 3)
 
@@ -47,7 +47,7 @@ class ZapRunner(Runner):
             base += ["-e", ctx.login.password_env]
             return [
                 *base,
-                self.image,
+                self.image_ref,
                 "zap.sh",
                 "-cmd",
                 "-autorun",
@@ -55,7 +55,7 @@ class ZapRunner(Runner):
             ]
         # ログイン不要な場合は従来どおり packaged scan を使う
         script = "zap-full-scan.py" if ctx.profile == "active" else "zap-baseline.py"
-        return [*base, self.image, script, "-t", url, "-J", REPORT_NAME, "-I", "-m", "5"]
+        return [*base, self.image_ref, script, "-t", url, "-J", REPORT_NAME, "-I", "-m", "5"]
 
     def available(self, ctx: RunContext) -> bool:
         return shutil.which("docker") is not None
