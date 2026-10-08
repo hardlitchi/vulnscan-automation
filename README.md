@@ -57,7 +57,7 @@ Docker を使わない場合: `pip install -e ".[web]"` のあと `vulnscan web 
 
 - Python 3.11 以上
 - スキャナ: ローカルの `nmap` / `nuclei`、または Docker（`--docker` 指定時）
-- ZAP は常に Docker イメージ `ghcr.io/zaproxy/zaproxy:stable` で実行します
+- ZAP は常に Docker イメージ `ghcr.io/zaproxy/zaproxy`（バージョン固定）で実行します
 - 内蔵の `webcheck` は Python 標準ライブラリのみで動くため、外部ツールのインストールは不要です
 
 ## セットアップ
@@ -100,6 +100,33 @@ vulnscan scan -s scope.yaml --all -p passive --docker
 終了コード: `0` 正常 / `1` `--fail-on` に該当 / `2` スコープ外の対象あり / `3` 設定エラー
 
 レポートは `reports/<日時>/report.md` と `report.json` に出力されます。
+
+### スキャナのバージョン
+
+Docker で動かすスキャナのイメージはバージョンを固定しています（nmap `7.98` / nuclei `v3.11.1` /
+ZAP `2.16.1`）。`:latest` だと診断内容が予告なく変わって前回との差分が揺れるためです。
+更新するときは環境変数で上書きし、差分に問題がないことを確かめてからコードの既定値を上げてください。
+
+| 環境変数 | 例 |
+|---|---|
+| `VULNSCAN_IMAGE_NMAP` | `instrumentisto/nmap:7.99` |
+| `VULNSCAN_IMAGE_NUCLEI` | `projectdiscovery/nuclei:v3.12.0` |
+| `VULNSCAN_IMAGE_ZAP` | `ghcr.io/zaproxy/zaproxy:2.17.0` |
+
+### 結果の送信（MeshConsole などへの署名付き webhook）
+
+`VULNSCAN_WEBHOOK_URL` を設定すると、診断のたびに対象ごとの「未対応の指摘（新規・継続）」と
+「解消した指摘」を JSON で送ります（抑制中の指摘は件数のみ。拒否された対象は理由のみ）。
+
+| 環境変数 | 説明 |
+|---|---|
+| `VULNSCAN_WEBHOOK_URL` | 送信先（例: `https://mc.example.com/api/vulnscan/ingest`） |
+| `VULNSCAN_WEBHOOK_SECRET` | 署名用の共有シークレット（16 文字以上、必須） |
+| `VULNSCAN_SOURCE_IPS` | このホストの送信元 IP（カンマ区切り）。受け手が自動ブロックの対象外にするのに使う |
+
+本文には `X-Vulnscan-Timestamp`（UNIX 秒）と
+`X-Vulnscan-Signature: sha256=HMAC-SHA256(secret, "<timestamp>.<本文>")` を付けます。
+送信に失敗しても診断は失敗扱いにせず、監査ログに `webhook_error` を残します。
 
 ## 定期実行（社内サーバ）
 
