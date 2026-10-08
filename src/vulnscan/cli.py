@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--all", action="store_true", help="scope.yaml の URL とドメインをすべて診断")
     s.add_argument("-p", "--profile", default="passive", choices=PROFILES)
     s.add_argument(
-        "--tools", default="nmap,nuclei,zap", help=f"カンマ区切り（{', '.join(RUNNERS)}）"
+        "--tools", default="nmap,nuclei,webcheck,zap", help=f"カンマ区切り（{', '.join(RUNNERS)}）"
     )
     s.add_argument("--db", default="vulnscan.db")
     s.add_argument("--out", default="reports", help="レポート出力ディレクトリ")

@@ -1,7 +1,8 @@
 # vulnscan-automation
 
-自社で管理・所有する資産に対して、OSS スキャナ（nmap / nuclei / OWASP ZAP）による
-脆弱性診断を自動実行し、結果を集約・差分化してレポートするツールです。
+自社で管理・所有する資産に対して、OSS スキャナ（nmap / nuclei / OWASP ZAP）および
+内蔵の Web アプリ診断（webcheck）による脆弱性診断を自動実行し、結果を集約・差分化して
+レポートするツールです。
 
 > **重要:** 本ツールは承認済みスコープ（`scope.yaml`）に含まれる対象以外には一切スキャンを
 > 実行しません。第三者が所有・管理する資産を、所有者の書面による許可なく診断することは
@@ -42,6 +43,11 @@ Docker を使わない場合: `pip install -e ".[web]"` のあと `vulnscan web 
   ツール実行の直前に毎回再判定し、キルスイッチで全診断を即停止できます。
 - **プロファイル**: `passive` / `standard` / `active` の 3 段階で侵襲度を制御
   （nuclei の intrusive・dos・fuzz テンプレートは standard 以下で除外）。
+- **内蔵 Web アプリ診断（webcheck）**: 外部ツール不要（標準ライブラリのみ）で、OWASP Top 10 相当の
+  軽量チェックを行います。セキュリティヘッダ・Cookie 属性・平文通信・情報露出・ディレクトリ一覧・
+  混在コンテンツ・CSRF トークン欠落（受動）に加え、standard 以上では同一スコープ内の安全な GET で
+  機微ファイルの露出・入力の反射（反射型 XSS の起点）・SQL エラーの反射（SQLi の兆候）を確認します。
+  **読み取り中心で破壊的なペイロードは送らず、叩く URL は必ず承認スコープ内に限ります。**
 - **正規化と差分**: 各ツールの結果を共通形式に変換し、前回との差分（新規・継続・解消）を出します。
 - **誤検知管理**: 理由と期限付きで抑制（`suppressions.yaml`）。
 - **監査ログ**: 判定結果と実行コマンドを JSON Lines で記録。
@@ -52,6 +58,7 @@ Docker を使わない場合: `pip install -e ".[web]"` のあと `vulnscan web 
 - Python 3.11 以上
 - スキャナ: ローカルの `nmap` / `nuclei`、または Docker（`--docker` 指定時）
 - ZAP は常に Docker イメージ `ghcr.io/zaproxy/zaproxy:stable` で実行します
+- 内蔵の `webcheck` は Python 標準ライブラリのみで動くため、外部ツールのインストールは不要です
 
 ## セットアップ
 
@@ -83,7 +90,7 @@ vulnscan scan -s scope.yaml --all -p passive --docker
 
 | オプション | 説明 |
 |---|---|
-| `--tools nmap,nuclei,zap` | 実行するツール |
+| `--tools nmap,nuclei,webcheck,zap` | 実行するツール（既定はこの 4 つ。URL 以外の対象では webcheck / zap は自動でスキップ） |
 | `--profile passive\|standard\|active` | 侵襲度（承認で許可されたもののみ） |
 | `--docker` | nmap / nuclei を Docker イメージで実行 |
 | `--fail-on high` | high 以上の新規指摘があれば終了コード 1（CI 向け） |
