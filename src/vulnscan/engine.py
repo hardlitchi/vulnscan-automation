@@ -119,7 +119,11 @@ def execute_scan(
                     aborted = True
                     break
                 ctx = RunContext(
-                    decision, workdir / name, use_docker=opts.use_docker, timeout=opts.timeout
+                    decision,
+                    workdir / name,
+                    use_docker=opts.use_docker,
+                    timeout=opts.timeout,
+                    url_allowed=lambda u, d=decision: guard.allows_url(d, u),
                 )
                 runner = RUNNERS[name]()
                 audit.write(

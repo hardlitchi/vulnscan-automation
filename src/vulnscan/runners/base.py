@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from ..models import Finding
 from ..scope import Decision, LoginConfig, Target
@@ -17,6 +19,9 @@ class RunContext:
     workdir: Path
     use_docker: bool = False
     timeout: int = 3600
+    # スキャン中に追加で叩く URL（リンク先・派生パス）が同じ承認の範囲内かを判定する。
+    # engine が guard.allows_url を注入する。未注入のときは対象 URL と同一オリジン・パス配下に限る。
+    url_allowed: Callable[[str], bool] | None = None
 
     @property
     def target(self) -> Target:
@@ -30,6 +35,32 @@ class RunContext:
     def login(self) -> LoginConfig | None:
         auth = self.decision.authorization
         return auth.login if auth else None
+
+    def in_scope(self, url: str) -> bool:
+        """対象 URL から派生させた URL を叩いてよいか。スコープガードと同じ判定を使う。"""
+        if self.url_allowed is not None:
+            return self.url_allowed(url)
+        base = self.target.url
+        return bool(base) and _same_origin_subpath(url, base)
+
+
+def _same_origin_subpath(url: str, base: str) -> bool:
+    """guard 未注入時のフォールバック: base と同一オリジンかつ base のパス配下のみ許可。"""
+    try:
+        u, b = urlsplit(url), urlsplit(base)
+    except ValueError:
+        return False
+    if u.scheme != b.scheme or (u.hostname or "").lower() != (b.hostname or "").lower():
+        return False
+    uport = u.port or (443 if u.scheme == "https" else 80)
+    bport = b.port or (443 if b.scheme == "https" else 80)
+    if uport != bport:
+        return False
+    bpath = b.path or "/"
+    upath = u.path or "/"
+    if not bpath.endswith("/"):
+        bpath = bpath.rsplit("/", 1)[0] + "/"
+    return upath.startswith(bpath)
 
 
 @dataclass

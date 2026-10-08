@@ -28,6 +28,7 @@ PROFILE = {
 TOOL = {
     "nmap": "公開されているサービスの確認（nmap）",
     "nuclei": "よく知られた脆弱性の確認（nuclei）",
+    "webcheck": "Webアプリの基本診断（内蔵。セキュリティヘッダ・Cookie・入力の反射など。URL を指定した対象のみ）",
     "zap": "Webサイトの動作確認（OWASP ZAP、URL を指定した対象のみ）",
     "ai": "AIによる探索的診断の観点提案（要人手確認）",
 }
