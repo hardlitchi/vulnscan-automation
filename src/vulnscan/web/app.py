@@ -28,6 +28,7 @@ from ..scope import PROFILES, Scope, ScopeError, ScopeGuard, iter_scope_targets
 from ..store import Store
 from ..suppressions import Suppression, load_suppressions, split_suppressed
 from . import labels
+from .api import register_api
 from .jobs import Busy, Job, JobManager
 
 HERE = Path(__file__).parent
@@ -46,6 +47,8 @@ class WebSettings:
     password: str | None = None
     run_in_background: bool = True
     ai: AIConfig | None = None
+    # 管理画面（MeshConsole 等）から診断を起動する署名付き API の共有シークレット。None なら API は無効
+    api_secret: str | None = None
 
 
 def create_app(settings: WebSettings, guard_factory=ScopeGuard) -> FastAPI:
@@ -177,6 +180,43 @@ def create_app(settings: WebSettings, guard_factory=ScopeGuard) -> FastAPI:
         )
 
     # ---- 診断の開始 ----
+    def launch(
+        scope: Scope,
+        guard,
+        raw: str,
+        profile: str,
+        chosen: list[str],
+        actor: str | None,
+        use_ai: bool = False,
+        audit_actor: str | None = None,
+    ) -> Job:
+        """判定済み（guard.authorize が許可）の対象で診断ジョブを始める。画面と API で共通。"""
+        rules, _ = load_rules()
+        opts = ScanOptions(
+            profile=profile,
+            tools=chosen,
+            db=settings.db,
+            out=settings.out,
+            audit_log=settings.audit_log,
+            use_docker=settings.use_docker,
+            timeout=settings.timeout,
+            actor=audit_actor or actor or "local",
+            ai=settings.ai if (use_ai and settings.ai and settings.ai.enabled) else None,
+        )
+
+        def work(job: Job) -> None:
+            execute_scan(
+                scope,
+                [raw],
+                opts,
+                suppressions=rules,
+                log=job.log.append,
+                guard=guard,
+                on_run_started=job.run_ids.append,
+            )
+
+        return jobs.submit(raw, profile, chosen, actor, work, background=settings.run_in_background)
+
     def scan_form(request: Request, user, **ctx) -> HTMLResponse:
         scope, _ = load_scope()
         choices = iter_scope_targets(scope) if scope else []
@@ -242,33 +282,16 @@ def create_app(settings: WebSettings, guard_factory=ScopeGuard) -> FastAPI:
         if not decision.allowed:
             return scan_form(request, user, form=form, denied=decision)
 
-        rules, _ = load_rules()
-        opts = ScanOptions(
-            profile=profile,
-            tools=chosen,
-            db=settings.db,
-            out=settings.out,
-            audit_log=settings.audit_log,
-            use_docker=settings.use_docker,
-            timeout=settings.timeout,
-            actor=user or "local",
-            ai=settings.ai if (use_ai and settings.ai and settings.ai.enabled) else None,
-        )
-
-        def work(job: Job) -> None:
-            execute_scan(
-                scope,
-                [raw],
-                opts,
-                suppressions=rules,
-                log=job.log.append,
-                guard=guard,
-                on_run_started=job.run_ids.append,
-            )
-
         try:
-            job = jobs.submit(
-                raw, profile, chosen, user, work, background=settings.run_in_background
+            job = launch(
+                scope,
+                guard,
+                raw,
+                profile,
+                chosen,
+                user,
+                use_ai=bool(use_ai),
+                audit_actor=user or "local",
             )
         except Busy:
             return scan_form(
@@ -425,6 +448,15 @@ def create_app(settings: WebSettings, guard_factory=ScopeGuard) -> FastAPI:
         if scope and scope.kill_switch_file and scope.kill_switch_file.exists():
             scope.kill_switch_file.unlink()
         return RedirectResponse("/", status_code=303)
+
+    register_api(
+        app,
+        secret=settings.api_secret,
+        jobs=jobs,
+        load_scope=load_scope,
+        guard_factory=guard_factory,
+        launch=launch,
+    )
 
     app.state.jobs = jobs
     app.state.csrf = csrf_token
