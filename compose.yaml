@@ -21,6 +21,8 @@ services:
       VULNSCAN_WEBHOOK_URL: ${VULNSCAN_WEBHOOK_URL:-}
       VULNSCAN_WEBHOOK_SECRET: ${VULNSCAN_WEBHOOK_SECRET:-}
       VULNSCAN_SOURCE_IPS: ${VULNSCAN_SOURCE_IPS:-}
+      # MeshConsole の画面から診断を開始できるようにする（任意。README「管理画面からの診断の開始」参照）
+      VULNSCAN_REMOTE_SCAN: ${VULNSCAN_REMOTE_SCAN:-}
     volumes:
       # スキャナのコンテナを起動するため Docker を使う（ホストの root 相当の権限を持つ点に注意）
       - /var/run/docker.sock:/var/run/docker.sock

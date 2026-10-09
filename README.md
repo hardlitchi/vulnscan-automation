@@ -128,6 +128,28 @@ ZAP `2.16.1`）。`:latest` だと診断内容が予告なく変わって前回�
 `X-Vulnscan-Signature: sha256=HMAC-SHA256(secret, "<timestamp>.<本文>")` を付けます。
 送信に失敗しても診断は失敗扱いにせず、監査ログに `webhook_error` を残します。
 
+### 管理画面（MeshConsole）からの診断の開始
+
+`VULNSCAN_REMOTE_SCAN=true` を設定すると、MeshConsole の「脆弱性」タブから診断を開始し、進み具合を
+確認できるようになります。結果はこれまでどおり webhook で MeshConsole に届きます。
+
+- 認証は結果送信と同じ `VULNSCAN_WEBHOOK_SECRET` による HMAC 署名です（設定は 1 つで済みます）。
+  署名の対象は `"<timestamp>.<nonce>.<METHOD>.<path>.<本文>"` で、webhook の署名とは形が違うため流用できません。
+  時刻ずれは ±5 分まで、同じ nonce は 10 分間受け付けません。
+- 開始できるのは **`scope.yaml` に明記された URL・ドメイン・単一ホストの CIDR（/32・/128）だけ**です。
+  CIDR の範囲内の任意の IP を指定することはできません。承認期間・時間帯・プロファイル・キルスイッチの
+  判定は画面からの開始と同じく毎回行います。
+- MeshConsole から届くように、`VULNSCAN_UI_HOST=0.0.0.0` と `VULNSCAN_UI_PASSWORD` も設定します
+  （MeshConsole の画面がこの 3 行を含む `.env` の内容を作ります）。ポート 8000 は MeshConsole
+  からだけ届くよう、VPN 経由にするかファイアウォールで送信元を絞ってください。
+
+| メソッド・パス | 内容 |
+|---|---|
+| `GET /api/status` | scope.yaml の読み込み可否・キルスイッチ・実行中の診断 |
+| `GET /api/targets` | 選べる対象と、今実行できるプロファイル（できない場合は理由） |
+| `POST /api/scans` | 診断の開始（`target` / `profile` / `tools` / `actor` / `confirm: true`）。実行中は 409 |
+| `GET /api/scans/{id}` | 進み具合とログ |
+
 ## 定期実行（社内サーバ）
 
 `deploy/` に systemd の service / timer の例があります。

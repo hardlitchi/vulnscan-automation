@@ -13,7 +13,7 @@ from vulnscan.scope import ScopeGuard
 from vulnscan.web.app import WebSettings, _is_loopback, create_app, serve
 
 
-def make_client(tmp_path, password=None, **auth_overrides):
+def make_client(tmp_path, password=None, api_secret=None, **auth_overrides):
     data = copy.deepcopy(SCOPE)
     data["kill_switch_file"] = str(tmp_path / "stop")
     data["authorizations"][0].update(**auth_overrides)
@@ -27,6 +27,7 @@ def make_client(tmp_path, password=None, **auth_overrides):
         suppressions=tmp_path / "suppressions.yaml",
         password=password,
         run_in_background=False,
+        api_secret=api_secret,
     )
 
     def guard_factory(scope):

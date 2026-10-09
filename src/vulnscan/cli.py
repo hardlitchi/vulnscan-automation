@@ -169,6 +169,15 @@ def run_web(args) -> int:
             file=sys.stderr,
         )
         return EXIT_CONFIG
+    api_secret = None
+    if os.environ.get("VULNSCAN_REMOTE_SCAN", "").lower() in ("1", "true", "yes"):
+        api_secret = os.environ.get("VULNSCAN_WEBHOOK_SECRET", "")
+        if len(api_secret) < 16:
+            print(
+                "VULNSCAN_REMOTE_SCAN を使うには VULNSCAN_WEBHOOK_SECRET（16 文字以上）を設定してください",
+                file=sys.stderr,
+            )
+            return EXIT_CONFIG
     settings = WebSettings(
         scope_path=Path(args.scope),
         db=Path(args.db),
@@ -180,6 +189,7 @@ def run_web(args) -> int:
         username=os.environ.get("VULNSCAN_UI_USER", "admin"),
         password=os.environ.get("VULNSCAN_UI_PASSWORD"),
         ai=load_ai_config(args.ai, args.ai_model),
+        api_secret=api_secret,
     )
     try:
         return serve(settings, host=args.host, port=args.port)
